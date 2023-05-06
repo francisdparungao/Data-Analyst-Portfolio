@@ -1,44 +1,54 @@
-select * from(
-SELECT "CUSTOM_QUERY".*, 
-"RUN_DATE".FY_CODE AS "RUN_FY",
-"RUN_DATE".FQ_LABEL AS "RUN_FQ",
-"RUN_DATE".FM_ALT_NAME AS "RUN_MONTH",
-"RUN_DATE".FM_CODE AS "RUN_FM",
-"RUN_DATE".FW_LABEL AS "RUN_FW_LABEL",
-"RUN_DATE".FW_CODE AS "RUN_FW_CODE"
+-- I created below query to convert calendar dates into its fiscal equivalent for easier monitoring of expenses per carrier. 
+-- I then used Tableau to visualize the data shown by this query.
+-- Prior to this, I also worked extensively with our IT team to correct data entries from a specific column by setting up a primary key.
 
-FROM (
+SELECT * FROM
+  (
+  SELECT "FIRST_QUERY".*, 
+  "RUN_DATE".FY_CODE AS "RUN_FY",
+  "RUN_DATE".FQ_LABEL AS "RUN_FQ",
+  "RUN_DATE".FM_ALT_NAME AS "RUN_MONTH",
+  "RUN_DATE".FM_CODE AS "RUN_FM",
+  "RUN_DATE".FW_LABEL AS "RUN_FW_LABEL",
+  "RUN_DATE".FW_CODE AS "RUN_FW_CODE"
 
-SELECT "CASS_BODS_TABLE".*,
-"SHIP_DATE".FY_CODE AS "SHIP_FY",
-"SHIP_DATE".FQ_LABEL AS "SHIP_FQ",
-"SHIP_DATE".FM_ALT_NAME AS "SHIP_MONTH",
-"SHIP_DATE".FM_CODE AS "SHIP_FM",
-"SHIP_DATE".FW_LABEL AS "SHIP_FW_LABEL",
-"SHIP_DATE".FW_CODE AS "SHIP_FW_CODE"
+  FROM (
+
+  SELECT shipment_details_table.*,
+  "SHIP_DATE".FY_CODE AS "SHIP_FY",
+  "SHIP_DATE".FQ_LABEL AS "SHIP_FQ",
+  "SHIP_DATE".FM_ALT_NAME AS "SHIP_MONTH",
+  "SHIP_DATE".FM_CODE AS "SHIP_FM",
+  "SHIP_DATE".FW_LABEL AS "SHIP_FW_LABEL",
+  "SHIP_DATE".FW_CODE AS "SHIP_FW_CODE"
+
+  FROM (
+    SELECT 
+      TO_date(TO_char(REPLACE("Run Date",'20221223','20221226')), 'YYYY/MM/DD') as "Run Date",
+      "Carrier Name",
+      TO_date(TO_char("Ship Date"), 'YYYY/MM/DD') as "Ship Date",
+      "INVOICENUMBER",
+      "Shipment#","HAWB","Origin Name","Origin City","Origin State","Origin Country",
+      "Dest Name","Dest City","Dest State","Dest Country"
+      ,"REGION",    "IDENTIFIER" ,
+      "Ship Weight","US Funded Amount","Total Paid Amount",
+      "Allocated Amtount","Line Haul and Accessorials"
+      ,"DUTIES","VAT Tax", "Consumption Tax", "GST",
+      FROM shipment_details_table
+      WHERE "Run Date" is not null
+  ) 
+    
+    LEFT JOIN (
+    SELECT * FROM Date_Table
+  ) "SHIP_DATE" 
   
-FROM (
-  select 
-    TO_date(TO_char(REPLACE("Cass Run Date",'20221223','20221226')), 'YYYY/MM/DD') as "Cass Run Date",
-    "Carrier Name",
-    TO_date(TO_char("Ship Date"), 'YYYY/MM/DD') as "Ship Date",
-    "INVOICENUMBER",
-    "Shipment#","HAWB","Origin Name","Origin City","Origin State","Origin Cntry",
-    "Dest Name","Dest City","Dest State","DESTCNTRY"
-    ,"REGION","Time period notified",
-    "IDENTIFIER" ,
-    "Ship Weight","US Funded Amount","Total Paid Amount",
-    "Allocated Amt","Line Haul and Accessorials"
-    ,"DUTIES","VAT Tax", "Consumption Tax", "GST","UOM"
-    from Bods_extract.funding_detail_usd
-    where "Cass Run Date" is not null
-) "CASS_BODS_TABLE"
-  LEFT JOIN (
-  Select * from DATAWARE.TIME_CALENDAR_ADI
-) "SHIP_DATE" ON ("CASS_BODS_TABLE"."Ship Date" = "SHIP_DATE".Date_Key)
+  ON (shipment_details_table."Ship Date" = "SHIP_DATE".Date_Key)
 
-) "CUSTOM_QUERY"
-LEFT JOIN (
- Select * from DATAWARE.TIME_CALENDAR_ADI
-) "RUN_DATE" ON ("CUSTOM_QUERY"."Cass Run Date" = "RUN_DATE".Date_Key)
-)
+  ) "FIRST_QUERY"
+  
+  LEFT JOIN (
+   SELECT * FROM Date_Table
+  ) "RUN_DATE" 
+  
+  ON ("CUSTOM_QUERY"."Cass Run Date" = "RUN_DATE".Date_Key)
+  )
